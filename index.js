@@ -1,6 +1,8 @@
 const fs = require("fs");
 csv = fs.readFileSync("input2.csv");
 
+// METHODS BEGIN ##############################################################
+
 const removeFlags = (str) => {
   let inSideflag = false;
   newStr = "";
@@ -18,19 +20,13 @@ const removeFlags = (str) => {
   return newStr;
 };
 
-const normalize = (str) => {
-  const noFlags = removeFlags(str);
-
-  return noFlags;
-};
-
 const splitElementsInMatrixBy = (matrix, char) => {
+  const headers = matrix[0];
   for (let i = 1; i < matrix.length; i++) {
-    for (let j = 0; j < matrix[0].length; j++) {
+    for (j in headers) {
       matrix[i][j] = matrix[i][j].split(char);
     }
   }
-
   return matrix;
 };
 
@@ -50,19 +46,21 @@ const joinRowsByEid = (matrix) => {
   const eidIndex = data[0].indexOf("eid");
   let newArray = [];
   let duplicate = false;
-  for (let i = 0; i < data.length; i++) {
+  const headers = data[0];
+  for (i in data) {
     if (i <= 1) {
       newArray.push(data[i]);
       continue;
     }
 
-    for (let j = 0; j < newArray.length; j++) {
+    for (j in newArray) {
       if (newArray[j][eidIndex][0] === data[i][eidIndex][0]) {
         duplicate = true;
-        for (let y = 0; y < data[0].length; y++) {
-          for (let z = 0; z < data[i][y].length; z++) {
-            if (!newArray[j][y].includes(data[i][y][z])) {
-              newArray[j][y].push(data[i][y][z]);
+        for (y in headers) {
+          const rowCell = data[i][y];
+          for (z in rowCell) {
+            if (!newArray[j][y].includes(rowCell[z])) {
+              newArray[j][y].push(rowCell[z]);
             }
           }
         }
@@ -91,15 +89,17 @@ const matrixToObj = (headers, data) => {
     obj["groups"] = [];
     obj["addresses"] = [];
     for (j in headers) {
-      switch (headers[j][0]) {
+      const rowCell = data[i][j];
+      const header = headers[j][0];
+      switch (header) {
         case "eid":
         case "fullname":
-          obj[headers[j][0]] = data[i][j][0];
+          obj[header] = rowCell[0];
           break;
         case "group":
-          const groups = data[i][j];
+          const groups = rowCell;
           for (g in groups) {
-            const group = data[i][j][g];
+            const group = rowCell[g];
             if (group !== "") {
               obj["groups"].push(group);
             }
@@ -107,16 +107,16 @@ const matrixToObj = (headers, data) => {
           break;
         case "see_all":
         case "invisible":
-          if (data[i][j][0] === "1" || data[i][j][0] === "yes") {
-            obj[headers[j][0]] = true;
+          if (rowCell[0] === "1" || rowCell[0] === "yes") {
+            obj[header] = true;
           } else {
-            obj[headers[j][0]] = false;
+            obj[header] = false;
           }
           break;
         case "phone":
         case "email":
-          for (k in data[i][j]) {
-            const address = data[i][j][k];
+          for (k in rowCell) {
+            const address = rowCell[k];
             if (address) {
               let adress = {
                 type: headers[j][0],
@@ -126,7 +126,6 @@ const matrixToObj = (headers, data) => {
               obj["addresses"].push(adress);
             }
           }
-
           break;
       }
     }
@@ -136,7 +135,7 @@ const matrixToObj = (headers, data) => {
   return sortGroups(arrayOfObj);
 };
 
-const emailPhoneNormilize = (data) => {
+const emailPhoneNormalize = (data) => {
   const headers = data[0].map((header) => header.split(" "));
 
   for (let i = 1; i < data.length; i++) {
@@ -156,13 +155,11 @@ const emailPhoneNormilize = (data) => {
               break;
             case "phone":
               const phone = data[i][j][k].replace(/\D/g, "");
-              // console.log(phone);
               if (phone.length === 11) {
                 data[i][j][k] = "55" + phone;
               } else {
                 data[i][j][k] = "";
               }
-              // console.log(data[i][j][k]);
               break;
           }
         }
@@ -172,31 +169,27 @@ const emailPhoneNormilize = (data) => {
   return data;
 };
 
-////////////////////////////////////////////////////////////////////////////////////
+// METHODS END ################################################################
 
-const csvString = csv.toString();
+let csvString = csv.toString();
 
-const csvNormalized = normalize(csvString);
+csvString = removeFlags(csvString);
 
-const csvArray = csvNormalized.split("\n");
+const csvArray = csvString.split("\n");
 
-const csvMatrix = csvArray.map((row) => row.split(","));
+let csvMatrix = csvArray.map((row) => row.split(","));
 
-let csvMatrixNormalized = splitElementsInMatrixBy(csvMatrix, "/");
+csvMatrix = splitElementsInMatrixBy(csvMatrix, "/");
 
-csvMatrixNormalized = emailPhoneNormilize(csvMatrixNormalized);
+csvMatrix = emailPhoneNormalize(csvMatrix);
 
-const joinedByAid = joinRowsByEid(csvMatrixNormalized);
+csvMatrix = joinRowsByEid(csvMatrix);
 
-let headers = joinedByAid[0];
+const headers = csvMatrix[0].map((header) => header.split(" "));
 
-headers = headers.map((header) => header.split(" "));
-
-const data = joinedByAid.slice(1);
+const data = csvMatrix.slice(1);
 
 const obj = matrixToObj(headers, data);
-
-//console.log(obj);
 
 let json = JSON.stringify(obj);
 fs.writeFileSync("output.json", json);
