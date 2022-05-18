@@ -122,6 +122,19 @@ const emailPhoneValidate = (data) => {
   return data;
 };
 
+const separeteColumnsAndCells = (array) => {
+  let matrix = array.map((row) => row.split(","));
+
+  // separete elements when they are in same cell
+  matrix = splitElementsInMatrixBy(matrix, "/");
+
+  matrix = emailPhoneValidate(matrix);
+
+  matrix = joinRowsByEid(matrix);
+
+  return matrix;
+};
+
 const matrixToObj = (headers, data) => {
   let arrayOfObj = [];
 
@@ -185,24 +198,17 @@ const matrixToObj = (headers, data) => {
 
 let csvString = csv.toString();
 
-// in csv two elements can come as one  when inside quotas and separeted by commas
+// Two elements can come as one  when inside quotas and separeted by commas
 // the function remove the quotas and put / rather than commas to normalize all data
 csvString = removeQuotas(csvString);
 
 const csvArray = csvString.split("\n");
 
-let csvMatrix = csvArray.map((row) => row.split(","));
+let matrix = separeteColumnsAndCells(csvArray);
 
-// separete elements when in same cell
-csvMatrix = splitElementsInMatrixBy(csvMatrix, "/");
+const headers = matrix[0].map((header) => header.split(" "));
 
-csvMatrix = emailPhoneValidate(csvMatrix);
-
-csvMatrix = joinRowsByEid(csvMatrix);
-
-const headers = csvMatrix[0].map((header) => header.split(" "));
-
-const data = csvMatrix.slice(1);
+const data = matrix.slice(1);
 
 const obj = matrixToObj(headers, data);
 
